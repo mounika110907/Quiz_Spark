@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>QuizSpark - Smart Quiz Generator</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container" style="text-align:center;">
+  <h1>🔥 QuizSpark</h1>
+  <p>Upload a document to generate AI-powered quizzes & puzzles!</p>
+
+  <form action="/upload" method="post" enctype="multipart/form-data">
+    <input type="file" name="file" required><br><br>
+    <button type="submit">Generate Quiz</button>
+  </form>
+
+  <p style="margin-top:20px;"><i>Supported: .txt, .pdf, .docx</i></p>
+</div>
+</body>
+</html>

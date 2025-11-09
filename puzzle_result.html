@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Puzzle Results - QuizSpark</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #fff9f4;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      width: 60%;
+      margin: 40px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      color: #ff6600;
+    }
+    .qblock {
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 8px;
+      border-left: 5px solid #ff6600;
+      background: #fff3e6;
+    }
+    .correct {
+      border-left-color: green;
+      background: #e8ffe8;
+    }
+    .incorrect {
+      border-left-color: red;
+      background: #ffeaea;
+    }
+    button {
+      background-color: #ff6600;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 20px;
+    }
+    button:hover {
+      background-color: #e65c00;
+    }
+    .btn-container {
+      text-align: center;
+      margin-top: 20px;
+    }
+    /* Thank You section */
+    .thankyou {
+      display: none;
+      text-align: center;
+      margin-top: 100px;
+    }
+    .thankyou h1 {
+      color: #ff6600;
+      font-size: 2em;
+    }
+    .thankyou p {
+      font-size: 1.2em;
+      color: #555;
+    }
+  </style>
+
+  <script>
+    function exitApp() {
+      document.querySelector(".container").style.display = "none";
+      document.querySelector(".thankyou").style.display = "block";
+      setTimeout(() => {
+        window.close();
+      }, 4000);
+    }
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>Your Puzzle Results</h1>
+    <p style="text-align:center;">You solved <strong>{{ correct }}</strong> out of <strong>{{ total }}</strong> correctly.</p>
+
+    {% for r in results %}
+      <div class="qblock {{ 'correct' if r.is_correct else 'incorrect' }}">
+        <p><b>Puzzle {{ loop.index }}:</b> {{ r.puzzle }}</p>
+        <p>Your Answer: <b>{{ r.user or 'No Answer' }}</b></p>
+        <p>Correct Answer: <b>{{ r.answer }}</b></p>
+        <p>Status: {% if r.is_correct %}✅ Correct{% else %}❌ Incorrect{% endif %}</p>
+      </div>
+    {% endfor %}
+
+    <div class="btn-container">
+      <a href="{{ url_for('puzzle') }}"><button>Try Again</button></a>
+      <button onclick="exitApp()">Exit</button>
+    </div>
+  </div>
+
+  <!-- Hidden Thank You Section -->
+  <div class="thankyou">
+    <h1>🎉 Thank You!</h1>
+    <p>We hope you enjoyed solving the Puzzles.</p>
+    <p>You can close this tab anytime.</p>
+  </div>
+</body>
+</html>

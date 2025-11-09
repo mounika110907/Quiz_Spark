@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Puzzles - QuizSpark</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    .container {
+      width: 60%;
+      margin: auto;
+      font-family: Arial, sans-serif;
+    }
+    h1 {
+      text-align: center;
+      color: #ff6600;
+    }
+    .qblock {
+      background: #fff9f4;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-left: 4px solid #ff6600;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 6px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    button {
+      display: block;
+      background-color: #ff6600;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 20px auto;
+    }
+    button:hover {
+      background-color: darkorange;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Word Puzzles</h1>
+  <form action="/check_puzzles" method="post">
+    {% for p in puzzles %}
+      <div class="qblock">
+        <p><b>{{ loop.index }}.</b> {{ p.puzzle }}</p>
+        <input type="text" name="p{{ loop.index0 }}" placeholder="Enter your answer" required>
+      </div>
+    {% endfor %}
+    <button type="submit">Check Answers</button>
+  </form>
+</div>
+</body>
+</html>

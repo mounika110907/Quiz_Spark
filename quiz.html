@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Quiz Time - QuizSpark</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    body {
+      background-color: #fff9f4;
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      width: 60%;
+      margin: 40px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+    }
+    .qblock {
+      background: #fff3e6;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      border-left: 5px solid orange;
+    }
+    h1 {
+      text-align: center;
+      color: orange;
+    }
+    label.choice {
+      display: block;
+      margin: 5px 0;
+      cursor: pointer;
+    }
+    button {
+      background-color: orange;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: darkorange;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Quiz Time</h1>
+  <form action="/submit" method="post">
+    {% set q_index = 0 %}
+    {% for q in quiz %}
+      {% set q_index = loop.index %}
+      <div class="qblock">
+        <p><b>{{ q_index }}.</b> {{ q.question }}</p>
+        {% for opt in q.choices %}
+          <label class="choice">
+            <input type="radio" name="q{{ q_index }}" value="{{ opt }}" required> {{ opt }}
+          </label>
+        {% endfor %}
+      </div>
+    {% endfor %}
+    <div style="text-align:center;">
+      <button type="submit">Submit Answers</button>
+    </div>
+  </form>
+</div>
+</body>
+</html>
