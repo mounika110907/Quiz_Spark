@@ -1,4 +1,4 @@
-name: Build
+name: SonarQube Build
 
 on:
   push:
@@ -9,16 +9,35 @@ on:
 
 jobs:
   sonarqube:
-    name: SonarQube
+    name: SonarQube Analysis
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout the repository
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Better analysis accuracy
+          fetch-depth: 0  # Important for accurate Sonar analysis
 
+      # Step 2: Set up Python (for your Flask project)
+      - name: Set up Python
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt || true
+
+      # Step 4: Run SonarQube Scan
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v6
+        with:
+          args: >
+            -Dsonar.projectKey=QuizSpark
+           
+            -Dsonar.python.version=3.10
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
