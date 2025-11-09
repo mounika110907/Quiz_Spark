@@ -13,9 +13,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: SonarCloud Scan
+      - name: Set up SonarCloud Scanner
         uses: SonarSource/sonarcloud-github-action@v2
         with:
-          projectKey: Quiz_Spark
-          organization: mounika110907
-          token: ${{ secrets.SONAR_TOKEN }}
+          args: >
+            -Dsonar.projectKey=Quiz_Spark
+            -Dsonar.organization=mounika110907
+            -Dsonar.sources=backend,static,templates
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
