@@ -42,6 +42,8 @@ jobs:
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v6
         env:
+          env:
+          FLASK_SECRET_KEY: ${{ secrets.FLASK_SECRET_KEY }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
