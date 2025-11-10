@@ -4,17 +4,17 @@ import spacy
 import PyPDF2
 from docx import Document
 
-# Load spaCy model once
+# Load spaCy English model once for efficiency
 nlp = spacy.load("en_core_web_sm")
 
 def extract_text(path):
     """
-    Extracts text from txt, pdf, or docx files.
-    Returns empty string for unsupported or empty files.
+    Extract text content from files.
+    Supports .txt, .pdf, .docx; returns empty string if file not readable or unsupported.
     """
-    if not os.path.exists(path) or not os.path.isfile(path):
+    if not os.path.isfile(path):
         return ""
-    ext = os.path.splitext(path)[-1].lower()
+    ext = os.path.splitext(path)[1].lower()
     try:
         if ext == ".pdf":
             return _extract_pdf_text(path)
@@ -28,15 +28,16 @@ def extract_text(path):
 
 def _extract_pdf_text(path):
     text = ""
-    with open(path, "rb") as f:
-        try:
+    try:
+        with open(path, "rb") as f:
             reader = PyPDF2.PdfReader(f)
             for page in reader.pages:
-                t = page.extract_text()
-                if t:
-                    text += t
-        except Exception:
-            return ""
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text
+    except Exception:
+        # Return empty string if PDF reading fails
+        return ""
     return text
 
 def _extract_docx_text(path):
@@ -47,35 +48,47 @@ def _extract_docx_text(path):
         return ""
 
 def _get_nouns(sentence):
+    """
+    Extract noun and proper noun tokens from a given sentence string.
+    """
     doc = nlp(sentence)
-    return [t.text for t in doc if t.pos_ in ["NOUN", "PROPN"]]
+    return [token.text for token in doc if token.pos_ in ("NOUN", "PROPN")]
 
 def generate_quiz(text, sentence_length=30, max_questions=5, max_options=3):
+    """
+    Generate a quiz as a list of questions from the text using noun blanks.
+    Only sentences longer than 'sentence_length' are used.
+    Each question has multiple options including the correct noun answer.
+    """
     doc = nlp(text)
     sentences = [s.text for s in doc.sents if len(s.text) > sentence_length]
     quiz = []
-    for s in sentences[:max_questions]:
-        nouns = _get_nouns(s)
+    for sentence in sentences[:max_questions]:
+        nouns = _get_nouns(sentence)
         if not nouns:
             continue
         ans = random.choice(nouns)
-        # Ensure options are unique and include the answer
         base_options = list(set(nouns))
         if ans not in base_options:
             base_options.append(ans)
-        option_sample = [x for x in base_options if x != ans]
-        options = random.sample(option_sample, min(max_options, len(option_sample)))
-        options.append(ans)
-        random.shuffle(options)
-        quiz.append({"question": s.replace(ans, "_____"), "choices": options, "answer": ans})
+        choices = random.sample([x for x in base_options if x != ans], min(max_options, len(base_options)-1))
+        choices.append(ans)
+        random.shuffle(choices)
+        question = sentence.replace(ans, "_____")
+        quiz.append({"question": question, "choices": choices, "answer": ans})
     return quiz
 
 def generate_puzzles(text, min_word_length=6, max_puzzles=5):
-    words = [w.text.lower() for w in nlp(text) if w.is_alpha and len(w.text) >= min_word_length]
-    unique = list(set(words))
-    random.shuffle(unique)
+    """
+    Generate a list of scrambled word puzzles from words in the text.
+    Only words longer than or equal to 'min_word_length' are considered.
+    Each puzzle consists of a scrambled version and the original answer.
+    """
+    words = [token.text.lower() for token in nlp(text) if token.is_alpha and len(token.text) >= min_word_length]
+    unique_words = list(set(words))
+    random.shuffle(unique_words)
     puzzles = []
-    for w in unique[:max_puzzles]:
-        scrambled = "".join(random.sample(w, len(w)))
-        puzzles.append({"puzzle": f"Unscramble this word: {scrambled}", "answer": w})
+    for word in unique_words[:max_puzzles]:
+        scrambled = "".join(random.sample(word, len(word)))
+        puzzles.append({"puzzle": f"Unscramble this word: {scrambled}", "answer": word})
     return puzzles
