@@ -3,7 +3,9 @@ import os, random, spacy, PyPDF2
 from docx import Document
 
 app = Flask(__name__)
-app.secret_key = "quizspark_secret"   # Needed for session storage
+
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "default_key_for_dev")
+# Needed for session storage
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -120,3 +122,4 @@ def thankyou():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
