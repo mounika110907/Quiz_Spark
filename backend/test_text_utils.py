@@ -40,14 +40,13 @@ def test_generate_quiz_basic():
         assert q["answer"] in q["choices"]
 
 def test_generate_quiz_no_nouns():
-   text = "Quickly running, always jumping, happily laughing."
+    text = "Quickly running, always jumping, happily laughing."
     quiz = generate_quiz(text)
     assert quiz == []
 
 def test_generate_quiz_short_sentences():
     text = "Cat. Dog. Apple."
-    quiz = generate_quiz(text)
-    # All sentences too short for quiz
+    quiz = generate_quiz(text)# All sentences too short for quiz
     assert quiz == []
 
 def test_generate_puzzles_basic():
