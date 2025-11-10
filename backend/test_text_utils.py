@@ -204,3 +204,75 @@ def test_extract_text_txt_with_newlines():
     result = extract_text(path)
     assert "pytest!" in result and "Goodbye." in result
     os.remove(path)
+
+
+
+# Test extract_text with unusual file extension but valid content
+def test_extract_text_unusual_extension():
+    with tempfile.NamedTemporaryFile(mode="w+", suffix=".md", delete=False) as f:
+        f.write("Markdown content should return empty as unsupported extension")
+        path = f.name
+    result = extract_text(path)
+    assert result == ""
+    os.remove(path)
+
+# Test extract_text with binary file disguised as text file
+def test_extract_text_binary_file():
+    with tempfile.NamedTemporaryFile(mode="wb", suffix=".txt", delete=False) as f:
+        f.write(b'\x00\x01\x02\x03\x04\x05')
+        path = f.name
+    result = extract_text(path)
+    # likely empty or error-handled gracefully
+    assert isinstance(result, str)
+    os.remove(path)
+
+# Test generate_quiz with no sentences, empty string input
+def test_generate_quiz_no_sentences():
+    quiz = generate_quiz("")
+    assert quiz == []
+
+# Test generate_quiz with very long sentence but no nouns, should return empty
+def test_generate_quiz_long_sentence_no_nouns():
+    text = "Quickly jumping and laughing without any noun present in this long sentence."
+    quiz = generate_quiz(text)
+    assert quiz == []
+
+# Test generate_quiz with exact boundary sentence_length param
+def test_generate_quiz_sentence_length_boundary():
+    text = "Apple banana cat dog elephant giraffe fox."
+    quiz = generate_quiz(text, sentence_length=6)
+    # should produce quiz for 1 sentence max
+    assert isinstance(quiz, list)
+
+# Test generate_puzzles with all short words, should produce empty puzzles
+def test_generate_puzzles_all_short_words():
+    text = "I am in an old gym."
+    puzzles = generate_puzzles(text)
+    assert puzzles == []
+
+# Test generate_puzzles ensuring scrambled puzzle is different but anagram
+def test_generate_puzzles_scrambled_vs_answer():
+    text = "Python programming language semantics"
+    puzzles = generate_puzzles(text)
+    for p in puzzles:
+        scrambled_word = p["puzzle"].replace("Unscramble this word: ", "").replace(" ", "")
+        assert sorted(scrambled_word.lower()) == sorted(p["answer"].lower())
+        assert scrambled_word.lower() != p["answer"].lower()
+
+# Test generate_quiz with max_options parameter limiting choices count
+def test_generate_quiz_max_options_limit():
+    text = "Apple banana cat dog elephant giraffe fox."
+    quiz = generate_quiz(text, max_options=3)
+    for q in quiz:
+        assert len(q["choices"]) <= 4  # max_options + 1 for correct answer
+
+# Test extract_text with a large text file
+def test_extract_text_large_file():
+    large_text = "Line\n" * 10000
+    with tempfile.NamedTemporaryFile(mode="w+", suffix=".txt", delete=False) as f:
+        f.write(large_text)
+        path = f.name
+    result = extract_text(path)
+    assert result.count("Line") == 10000
+    os.remove(path)
+
