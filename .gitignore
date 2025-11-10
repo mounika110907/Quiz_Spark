@@ -1,2 +1,10 @@
-# Created by venv; see https://docs.python.org/3/library/venv.html
-*
+# Ignore Python virtual environments
+venv/
+.venv/
+__pycache__/
+
+# Ignore cache and temporary files
+*.pyc
+*.pyo
+
+# Do NOT ignore your source files!
