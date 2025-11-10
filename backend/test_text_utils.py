@@ -3,7 +3,6 @@ import os
 from text_utils import extract_text, generate_quiz, generate_puzzles
 import pytest
 
-
 def test_extract_text_txt():
     with tempfile.NamedTemporaryFile(mode="w+", suffix=".txt", delete=False) as f:
         f.write("Hello, pytest!")
@@ -30,6 +29,66 @@ def test_extract_text_docx():
     assert "Docx test paragraph." in result
     os.remove(path)
 
+def test_extract_text_pdf():
+    from fpdf import FPDF
+    path = os.path.join(tempfile.gettempdir(), "test.pdf")
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt="Test PDF content.", ln=True)
+    pdf.output(path)
+    result = extract_text(path)
+    assert "Test PDF content." in result
+    os.remove(path)
+
+def test_extract_text_malformed_docx():
+    path = os.path.join(tempfile.gettempdir(), "corrupt.docx")
+    with open(path, "w") as f:
+        f.write("not a real docx file")
+    result = extract_text(path)
+    assert result == ""
+    os.remove(path)
+
+def test_extract_text_nonexistent_file():
+    result = extract_text("no_such_file.txt")
+    assert result == ""
+
+def test_extract_text_folder():
+    tmp_dir = tempfile.gettempdir()
+    result = extract_text(tmp_dir)
+    assert result == ""
+
+def test_extract_text_unsupported_extension():
+    with tempfile.NamedTemporaryFile(mode="w+", suffix=".csv", delete=False) as f:
+        f.write("not relevant data")
+        f.seek(0)
+        path = f.name
+    result = extract_text(path)
+    assert result == ""
+    os.remove(path)
+
+def test_extract_text_invalid_open(monkeypatch):
+    def fail_open(*args, **kwargs):
+        raise Exception("Open failed!")
+    monkeypatch.setattr("builtins.open", fail_open)
+    result = extract_text("file.txt")
+    assert result == ""
+
+def test_extract_text_docx_exception(monkeypatch):
+    def fail_docx(path):
+        raise Exception("DOCX failed to load!")
+    monkeypatch.setattr("text_utils.Document", fail_docx)
+    result = extract_text("fake.docx")
+    assert result == ""
+
+def test_extract_text_pdf_exception(monkeypatch):
+    class DummyPdfReader:
+        def __init__(self, file):
+            raise Exception("PDF failed to open")
+    monkeypatch.setattr("text_utils.PyPDF2.PdfReader", DummyPdfReader)
+    result = extract_text("some.pdf")
+    assert result == ""
+
 def test_generate_quiz_basic():
     text = "This is a test sentence with some nouns like apple and banana. Another sentence with cat and dog."
     quiz = generate_quiz(text)
@@ -51,6 +110,33 @@ def test_generate_quiz_short_sentences():
     quiz = generate_quiz(text)
     assert quiz == []
 
+def test_generate_quiz_max_questions():
+    text = ("An apple a day keeps the doctor away. "
+            "Banana is yellow. "
+            "Cat on the mat. "
+            "Dog barked loudly at the stranger in the alley. "
+            "Elephant is the largest land animal. "
+            "Fox is quick and clever. "
+            "Giraffe has a long neck.")
+    quiz = generate_quiz(text, max_questions=3)
+    assert len(quiz) <= 3
+
+def test_generate_quiz_one_noun_per_sentence():
+    text = "Orange. Table."
+    quiz = generate_quiz(text, sentence_length=2, max_questions=2)
+    assert all(len(q["choices"]) >= 1 for q in quiz)
+
+def test_generate_quiz_min_nouns():
+    text = "Apple is red. A desk."
+    quiz = generate_quiz(text, sentence_length=2, max_questions=2, min_nouns=2)
+    assert quiz == []
+
+def test_generate_quiz_long_sentence_many_nouns():
+    text = "The apple, banana, cat, dog, and desk are all examples in this very long sentence with many nouns."
+    quiz = generate_quiz(text, sentence_length=10, max_questions=1, max_options=4)
+    assert len(quiz) == 1
+    assert len(quiz[0]["choices"]) <= 5
+
 def test_generate_puzzles_basic():
     text = "Python programming language provides powerful features."
     puzzles = generate_puzzles(text)
@@ -67,48 +153,6 @@ def test_generate_puzzles_min_word_length():
     puzzles = generate_puzzles(text)
     assert any(p["answer"] == "programming" for p in puzzles) or any(p["answer"] == "apple" for p in puzzles)
 
-def test_extract_text_pdf():
-    from fpdf import FPDF
-    path = os.path.join(tempfile.gettempdir(), "test.pdf")
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt="Test PDF content.", ln=True)
-    pdf.output(path)
-    result = extract_text(path)
-    assert "Test PDF content." in result
-    os.remove(path)
-
-def test_extract_text_malformed_docx():
-    path = os.path.join(tempfile.gettempdir(), "corrupt.docx")
-    with open(path, "w") as f:
-        f.write("not a real docx file")
-    result = extract_text(path)
-    assert result == ""
-    os.remove(path)
-
-# --- Additional Coverage Extension ---
-
-def test_extract_text_nonexistent_file():
-    result = extract_text("no_such_file.txt")
-    assert result == ""
-
-def test_extract_text_folder():
-    tmp_dir = tempfile.gettempdir()
-    result = extract_text(tmp_dir)
-    assert result == ""
-
-def test_generate_quiz_max_questions():
-    text = ("An apple a day keeps the doctor away. "
-            "Banana is yellow. "
-            "Cat on the mat. "
-            "Dog barked loudly at the stranger in the alley. "
-            "Elephant is the largest land animal. "
-            "Fox is quick and clever. "
-            "Giraffe has a long neck.")
-    quiz = generate_quiz(text, max_questions=3)
-    assert len(quiz) <= 3
-
 def test_generate_puzzles_handles_duplicates():
     text = "programming programming programming Python Python"
     puzzles = generate_puzzles(text, max_puzzles=10)
@@ -116,6 +160,23 @@ def test_generate_puzzles_handles_duplicates():
     for p in puzzles:
         assert p["answer"] not in seen
         seen.add(p["answer"])
+
+def test_generate_puzzles_max_puzzles_limit():
+    text = "programming language features modules objects functions classes attributes exception inheritance encapsulation polymorphism"
+    puzzles = generate_puzzles(text, max_puzzles=5)
+    assert len(puzzles) <= 5
+
+def test_generate_puzzles_all_scrambled_unique():
+    text = "Feature Puzzle"
+    puzzles = generate_puzzles(text)
+    for p in puzzles:
+        scrambled = p["puzzle"].split(': ')[-1]
+        assert scrambled != p["answer"]
+
+def test_generate_puzzles_word_too_short():
+    text = "To be or not to be."
+    puzzles = generate_puzzles(text, min_word_length=8, max_puzzles=3)
+    assert puzzles == []
 
 def test_generate_puzzles_empty_text():
     puzzles = generate_puzzles("")
@@ -125,62 +186,15 @@ def test_generate_quiz_empty_text():
     quiz = generate_quiz("")
     assert quiz == []
 
-def test_extract_docx_exception(monkeypatch):
-    monkeypatch.setattr('text_utils.Document', lambda x: (_ for _ in ()).throw(Exception("fail")))
-    result = extract_text("somefile.docx")
-    assert result == ""
+def test_generate_quiz_varied_sent_lengths():
+    text = "A short. Banana is yellow and elongated. Cat loves sleeping. Elephant is big and gray and from Africa."
+    quiz = generate_quiz(text, sentence_length=20, max_questions=3)
+    assert any("_____" in q["question"] for q in quiz)
 
-def test_pdf_exception(monkeypatch):
-    monkeypatch.setattr('text_utils.PyPDF2.PdfReader', lambda x: (_ for _ in ()).throw(Exception("fail")))
-    result = extract_text("somefile.pdf")
-    assert result == ""
-def test_extract_text_unsupported_extension():
-    # Should return "" for unsupported file types
-    with tempfile.NamedTemporaryFile(mode="w+", suffix=".csv", delete=False) as f:
-        f.write("not relevant data")
-        f.seek(0)
-        path = f.name
-    result = extract_text(path)
-    assert result == ""
-    os.remove(path)
-
-def test_generate_quiz_one_noun_per_sentence():
-    # Should work if sentences have only one noun
-    text = "Orange. Table."
-    quiz = generate_quiz(text, sentence_length=2, max_questions=2)
-    assert all(len(q["choices"]) >= 1 for q in quiz)
-
-def test_generate_quiz_min_nouns():
-    # Should not include sentences with nouns below min_nouns value
-    text = "Apple is red. A desk."
-    quiz = generate_quiz(text, sentence_length=2, max_questions=2, min_nouns=2)
-    assert quiz == []
-
-def test_generate_quiz_long_sentence_many_nouns():
-    text = "The apple, banana, cat, dog, and desk are all examples in this very long sentence with many nouns."
-    quiz = generate_quiz(text, sentence_length=10, max_questions=1, max_options=4)
-    assert len(quiz) == 1
-    assert len(quiz[0]["choices"]) <= 5
-
-def test_generate_puzzles_word_too_short():
-    # Words less than min_word_length should not generate puzzles
-    text = "To be or not to be."
-    puzzles = generate_puzzles(text, min_word_length=8, max_puzzles=3)
-    assert puzzles == []
-
-def test_generate_puzzles_max_puzzles_limit():
-    # Should not create more puzzles than max_puzzles
-    text = "programming language features modules objects functions classes attributes exception inheritance encapsulation polymorphism"
-    puzzles = generate_puzzles(text, max_puzzles=5)
-    assert len(puzzles) <= 5
-
-def test_generate_puzzles_all_scrambled_unique():
-    # Each scrambled puzzle should be different from the answer
-    text = "Feature Puzzle"
+def test_generate_puzzles_punctuation_handling():
+    text = "Programming! Python? Modular, encapsulation."
     puzzles = generate_puzzles(text)
-    for p in puzzles:
-        scrambled = p["puzzle"].split(': ')[-1]
-        assert scrambled != p["answer"]
+    assert all(p["answer"].isalpha() for p in puzzles)
 
 def test_extract_text_txt_with_newlines():
     with tempfile.NamedTemporaryFile(mode="w+", suffix=".txt", delete=False) as f:
@@ -190,41 +204,3 @@ def test_extract_text_txt_with_newlines():
     result = extract_text(path)
     assert "pytest!" in result and "Goodbye." in result
     os.remove(path)
-
-def test_generate_quiz_varied_sent_lengths():
-    text = "A short. Banana is yellow and elongated. Cat loves sleeping. Elephant is big and gray and from Africa."
-    quiz = generate_quiz(text, sentence_length=20, max_questions=3)
-    assert any("_____" in q["question"] for q in quiz)
-
-def test_generate_puzzles_punctuation_handling():
-    # Should exclude punctuation words from puzzles
-    text = "Programming! Python? Modular, encapsulation."
-    puzzles = generate_puzzles(text)
-    assert all(p["answer"].isalpha() for p in puzzles)
-
-def test_extract_text_pdf_exception(monkeypatch):
-    class DummyPdfReader:
-        def __init__(self, f):
-            raise Exception("PDF failed to open!")
-    monkeypatch.setattr("text_utils.PyPDF2.PdfReader", DummyPdfReader)
-    path = "anyfile.pdf"  # File path doesn't have to exist for monkeypatched open
-    result = extract_text(path)
-    assert result == ""  # Should hit exception and cover lines 16-17
-
-def test_extract_text_docx_exception(monkeypatch):
-    # Simulate a docx load error to cover line 28
-    def fail_docx(path):
-        raise Exception("DOCX failed to load!")
-    monkeypatch.setattr("text_utils.Document", fail_docx)
-    result = extract_text("fake.docx")
-    assert result == ""
-
-def test_extract_text_invalid_open(monkeypatch):
-    # Simulate open() failure and catch the exception (covers lines 9-14)
-    def fail_open(*args, **kwargs):
-        raise Exception("Open failed!")
-    monkeypatch.setattr("builtins.open", fail_open)
-    result = extract_text("file.txt")
-    assert result == ""
-
-
