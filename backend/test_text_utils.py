@@ -46,7 +46,7 @@ def test_generate_quiz_no_nouns():
 
 def test_generate_quiz_short_sentences():
     text = "Cat. Dog. Apple."
-    quiz = generate_quiz(text)# All sentences too short for quiz
+    quiz = generate_quiz(text)
     assert quiz == []
 
 def test_generate_puzzles_basic():
@@ -58,11 +58,31 @@ def test_generate_puzzles_basic():
         assert "puzzle" in p
         assert "answer" in p
         scrambled = p["puzzle"].replace("Unscramble this word: ", "").replace(" ", "")
-        # The scrambled should be an anagram of the answer
         assert sorted(scrambled.lower()) == sorted(p["answer"].lower())
 
 def test_generate_puzzles_min_word_length():
     text = "Short small tiniest apple programming"
     puzzles = generate_puzzles(text)
-    # Only "programming" and "apple" are long enough (>5 chars)
     assert any(p["answer"] == "programming" for p in puzzles) or any(p["answer"] == "apple" for p in puzzles)
+
+def test_extract_text_pdf():
+    # Create a minimal PDF for test
+    from fpdf import FPDF
+    path = os.path.join(tempfile.gettempdir(), "test.pdf")
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt="Test PDF content.", ln=True)
+    pdf.output(path)
+    result = extract_text(path)
+    assert "Test PDF content." in result
+    os.remove(path)
+
+def test_extract_text_malformed_docx():
+    # Test extract_text handles corrupt/malformed docx gracefully - just passes without error
+    path = os.path.join(tempfile.gettempdir(), "corrupt.docx")
+    with open(path, "w") as f:
+        f.write("not a real docx file")
+    result = extract_text(path)
+    assert result == ""
+    os.remove(path)
