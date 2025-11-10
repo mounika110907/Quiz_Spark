@@ -3,6 +3,47 @@ import os
 from text_utils import extract_text, generate_quiz, generate_puzzles
 import pytest
 
+
+# 1. extract_text with a symlink file pointing to a valid text file
+def test_extract_text_symlink():
+    with tempfile.NamedTemporaryFile(mode="w+", suffix=".txt", delete=False) as f:
+        f.write("Symlink target content")
+        f.seek(0)
+        target_path = f.name
+    link_path = target_path + "_link"
+    os.symlink(target_path, link_path)
+    result = extract_text(link_path)
+    assert "Symlink target content" in result
+    os.remove(target_path)
+    os.remove(link_path)
+
+# 2. generate_quiz with input text having mixed case nouns to verify case insensitivity
+def test_generate_quiz_mixed_case_nouns():
+    text = "Apple and banana are fruits. DOG chases cat."
+    quiz = generate_quiz(text)
+    assert all(isinstance(q, dict) for q in quiz)
+    assert any("Apple" in ' '.join(q["choices"]) or "apple" in ' '.join(q["choices"]) for q in quiz)
+
+# 3. generate_puzzles with input text containing numbers and symbols to check exclusion
+def test_generate_puzzles_exclude_non_alpha():
+    text = "Python 3.8 is awesome! $100 reward."
+    puzzles = generate_puzzles(text)
+    assert all(p["answer"].isalpha() for p in puzzles)
+
+# 4. extract_text with a file that is locked or in use (simulate IOError)
+def test_extract_text_ioerror(monkeypatch):
+    def fail_open(*args, **kwargs):
+        raise IOError("File in use")
+    monkeypatch.setattr("builtins.open", fail_open)
+    result = extract_text("locked_file.txt")
+    assert result == ""
+
+# 5. generate_quiz with sentences containing conjunctions but few nouns, testing sentence splitting
+def test_generate_quiz_sentences_with_conjunctions():
+    text = "Apple and banana. Cat or dog. Elephant but not giraffe."
+    quiz = generate_quiz(text)
+    assert isinstance(quiz, list)
+    assert all("question" in q for q in quiz)
 def test_extract_text_txt():
     with tempfile.NamedTemporaryFile(mode="w+", suffix=".txt", delete=False) as f:
         f.write("Hello, pytest!")
