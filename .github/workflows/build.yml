@@ -29,9 +29,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest pytest-cov spacy PyPDF2 python-docx
           python -m spacy download en_core_web_sm
-    
-    
-
 
       - name: Run tests with coverage
         run: |
@@ -54,5 +51,5 @@ jobs:
             -Dsonar.projectVersion=1.0
             -Dsonar.sources=backend
             -Dsonar.sourceEncoding=UTF-8
-            -Dsonar.coverage.exclusions=**/__pycache__/**, **/venv/**, **/tests/**, **/static/**, **/templates/**
+            -Dsonar.coverage.exclusions=**/__pycache__/**,**/venv/**,**/tests/**,**/static/**,**/templates/**
             -Dsonar.python.coverage.reportPaths=backend/coverage.xml
