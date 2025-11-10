@@ -22,7 +22,8 @@ def test_generate_quiz_mixed_case_nouns():
     text = "Apple and banana are fruits. DOG chases cat."
     quiz = generate_quiz(text)
     assert all(isinstance(q, dict) for q in quiz)
-    assert any("Apple" in ' '.join(q["choices"]) or "apple" in ' '.join(q["choices"]) for q in quiz)
+    assert any("apple" in ' '.join(choice.lower() for choice in q["choices"]) for q in quiz)
+
 
 # 3. generate_puzzles with input text containing numbers and symbols to check exclusion
 def test_generate_puzzles_exclude_non_alpha():
