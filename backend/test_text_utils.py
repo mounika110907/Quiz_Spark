@@ -40,9 +40,8 @@ def test_generate_quiz_basic():
         assert q["answer"] in q["choices"]
 
 def test_generate_quiz_no_nouns():
-    text = "Just verbs and adjectives here quickly running happily."
+   text = "Quickly running, always jumping, happily laughing."
     quiz = generate_quiz(text)
-    # Should return an empty list because no nouns are present
     assert quiz == []
 
 def test_generate_quiz_short_sentences():
