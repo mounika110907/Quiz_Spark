@@ -4,13 +4,13 @@ import spacy
 import PyPDF2
 from docx import Document
 
-# Load spaCy English model just once for better performance
+# Load spaCy English model once for better performance
 nlp = spacy.load("en_core_web_sm")
 
 def extract_text(path):
     """
     Extracts text from .txt, .pdf, .docx files.
-    Returns empty string for unsupported files or read errors.
+    Returns empty string for unsupported, unreadable files or errors.
     """
     if not os.path.isfile(path):
         return ""
@@ -24,11 +24,11 @@ def extract_text(path):
             with open(path, encoding="utf-8", errors="ignore") as f:
                 return f.read()
         else:
-            # Unsupported file extension returns empty string
+            # Unsupported extensions return empty string
             return ""
     except Exception as e:
-        # Log or print exception for debug, but return empty string in production
-        print(f"extract_text error ({ext}): {e}")
+        # You can connect this to logging for cleanup
+        print(f"Error extracting text from {path} ({ext}): {e}")
         return ""
 
 def _extract_pdf_text(path):
@@ -42,7 +42,7 @@ def _extract_pdf_text(path):
                     if page_text:
                         text += page_text
                 except Exception as e:
-                    print(f"PDF page extraction error: {e}")
+                    print(f"PDF page extraction error in {path}: {e}")
     except Exception as e:
         print(f"PDF file open error: {e}")
         return ""
@@ -58,16 +58,16 @@ def _extract_docx_text(path):
 
 def _get_nouns(sentence):
     """
-    Returns list of noun and proper noun tokens in a sentence string.
+    Extract noun and proper noun tokens from sentence string.
     """
     doc = nlp(sentence)
     return [token.text for token in doc if token.pos_ in ("NOUN", "PROPN")]
 
 def generate_quiz(text, sentence_length=30, max_questions=5, max_options=3, min_nouns=1):
     """
-    Generates quiz questions by replacing randomly chosen noun in each sentence with blanks.
-    Only sentences longer than sentence_length with at least min_nouns nouns are used.
-    Returns list of dict: question, choices, answer.
+    Create quiz questions from text by blanking nouns in sentences.
+    Only use sentences longer than sentence_length having min_nouns nouns.
+    Randomly sample answer and choices per question.
     """
     doc = nlp(text)
     sentences = [s.text for s in doc.sents if len(s.text) > sentence_length]
@@ -77,33 +77,38 @@ def generate_quiz(text, sentence_length=30, max_questions=5, max_options=3, min_
         nouns = _get_nouns(sentence)
         if len(nouns) < min_nouns:
             continue
-        # Defensive: avoid crash if all options are identical/repeated or only one noun found
+
         ans = random.choice(nouns)
         base_options = list(set(nouns))
         if ans not in base_options:
             base_options.append(ans)
+
         filtered_options = [opt for opt in base_options if opt != ans]
-        sample_options = []
         if filtered_options:
             sample_options = random.sample(filtered_options, min(max_options, len(filtered_options)))
+        else:
+            sample_options = []
+
         choices = sample_options + [ans]
         random.shuffle(choices)
+
         question = sentence.replace(ans, "_____")
         quiz.append({"question": question, "choices": choices, "answer": ans})
+
         if len(quiz) == max_questions:
             break
     return quiz
 
 def generate_puzzles(text, min_word_length=6, max_puzzles=5):
     """
-    Generates a list of word scramble puzzles from the input text.
-    Only words of at least min_word_length are used.
-    Returns list of dict with puzzle text and answer.
+    Generate word scramble puzzles from words in text.
+    Only words with length >= min_word_length considered.
     """
     words = [token.text.lower() for token in nlp(text) if token.is_alpha and len(token.text) >= min_word_length]
     unique_words = list(set(words))
     random.shuffle(unique_words)
     puzzles = []
+
     for word in unique_words[:max_puzzles]:
         if len(word) < 2:
             continue
@@ -111,6 +116,6 @@ def generate_puzzles(text, min_word_length=6, max_puzzles=5):
             scrambled = "".join(random.sample(word, len(word)))
             puzzles.append({"puzzle": f"Unscramble this word: {scrambled}", "answer": word})
         except Exception as e:
-            print(f"Scramble error for word '{word}': {e}")
+            print(f"Error scrambling word {word}: {e}")
             continue
     return puzzles
