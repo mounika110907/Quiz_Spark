@@ -14,7 +14,6 @@ def extract_text(path):
     """
     if not os.path.isfile(path):
         return ""
-
     ext = os.path.splitext(path)[1].lower()
     try:
         if ext == ".pdf":
@@ -27,7 +26,9 @@ def extract_text(path):
         else:
             # Unsupported file extension returns empty string
             return ""
-    except Exception:
+    except Exception as e:
+        # Log or print exception for debug, but return empty string in production
+        print(f"extract_text error ({ext}): {e}")
         return ""
 
 def _extract_pdf_text(path):
@@ -36,10 +37,14 @@ def _extract_pdf_text(path):
         with open(path, "rb") as f:
             reader = PyPDF2.PdfReader(f)
             for page in reader.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text += page_text
-    except Exception:
+                try:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text += page_text
+                except Exception as e:
+                    print(f"PDF page extraction error: {e}")
+    except Exception as e:
+        print(f"PDF file open error: {e}")
         return ""
     return text
 
@@ -47,7 +52,8 @@ def _extract_docx_text(path):
     try:
         doc = Document(path)
         return "\n".join(p.text for p in doc.paragraphs).strip()
-    except Exception:
+    except Exception as e:
+        print(f"DOCX load error: {e}")
         return ""
 
 def _get_nouns(sentence):
@@ -71,25 +77,21 @@ def generate_quiz(text, sentence_length=30, max_questions=5, max_options=3, min_
         nouns = _get_nouns(sentence)
         if len(nouns) < min_nouns:
             continue
-
+        # Defensive: avoid crash if all options are identical/repeated or only one noun found
         ans = random.choice(nouns)
         base_options = list(set(nouns))
         if ans not in base_options:
             base_options.append(ans)
-
-        # sample options excluding answer from base options, limiting by max_options and available nouns
         filtered_options = [opt for opt in base_options if opt != ans]
-        sample_options = random.sample(filtered_options, min(max_options, len(filtered_options)))
-
+        sample_options = []
+        if filtered_options:
+            sample_options = random.sample(filtered_options, min(max_options, len(filtered_options)))
         choices = sample_options + [ans]
         random.shuffle(choices)
-
         question = sentence.replace(ans, "_____")
         quiz.append({"question": question, "choices": choices, "answer": ans})
-
         if len(quiz) == max_questions:
             break
-
     return quiz
 
 def generate_puzzles(text, min_word_length=6, max_puzzles=5):
@@ -102,9 +104,13 @@ def generate_puzzles(text, min_word_length=6, max_puzzles=5):
     unique_words = list(set(words))
     random.shuffle(unique_words)
     puzzles = []
-
     for word in unique_words[:max_puzzles]:
-        scrambled = "".join(random.sample(word, len(word)))
-        puzzles.append({"puzzle": f"Unscramble this word: {scrambled}", "answer": word})
-
+        if len(word) < 2:
+            continue
+        try:
+            scrambled = "".join(random.sample(word, len(word)))
+            puzzles.append({"puzzle": f"Unscramble this word: {scrambled}", "answer": word})
+        except Exception as e:
+            print(f"Scramble error for word '{word}': {e}")
+            continue
     return puzzles
