@@ -34,6 +34,9 @@ jobs:
         run: |
           pytest --cov=backend --cov-report=xml
 
+      - name: Move coverage file to backend
+        run: mv coverage.xml backend/coverage.xml
+
       - name: List files for debugging
         run: |
           pwd
@@ -42,7 +45,6 @@ jobs:
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v6
         env:
-          env:
           FLASK_SECRET_KEY: ${{ secrets.FLASK_SECRET_KEY }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
