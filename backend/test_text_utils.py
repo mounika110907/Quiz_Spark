@@ -132,3 +132,71 @@ def test_pdf_exception(monkeypatch):
     monkeypatch.setattr('text_utils.PyPDF2.PdfReader', lambda x: (_ for _ in ()).throw(Exception("fail")))
     result = extract_text("somefile.pdf")
     assert result == ""
+def test_extract_text_unsupported_extension():
+    # Should return "" for unsupported file types
+    with tempfile.NamedTemporaryFile(mode="w+", suffix=".csv", delete=False) as f:
+        f.write("not relevant data")
+        f.seek(0)
+        path = f.name
+    result = extract_text(path)
+    assert result == ""
+    os.remove(path)
+
+def test_generate_quiz_one_noun_per_sentence():
+    # Should work if sentences have only one noun
+    text = "Orange. Table."
+    quiz = generate_quiz(text, sentence_length=2, max_questions=2)
+    assert all(len(q["choices"]) >= 1 for q in quiz)
+
+def test_generate_quiz_min_nouns():
+    # Should not include sentences with nouns below min_nouns value
+    text = "Apple is red. A desk."
+    quiz = generate_quiz(text, sentence_length=2, max_questions=2, min_nouns=2)
+    assert quiz == []
+
+def test_generate_quiz_long_sentence_many_nouns():
+    text = "The apple, banana, cat, dog, and desk are all examples in this very long sentence with many nouns."
+    quiz = generate_quiz(text, sentence_length=10, max_questions=1, max_options=4)
+    assert len(quiz) == 1
+    assert len(quiz[0]["choices"]) <= 5
+
+def test_generate_puzzles_word_too_short():
+    # Words less than min_word_length should not generate puzzles
+    text = "To be or not to be."
+    puzzles = generate_puzzles(text, min_word_length=8, max_puzzles=3)
+    assert puzzles == []
+
+def test_generate_puzzles_max_puzzles_limit():
+    # Should not create more puzzles than max_puzzles
+    text = "programming language features modules objects functions classes attributes exception inheritance encapsulation polymorphism"
+    puzzles = generate_puzzles(text, max_puzzles=5)
+    assert len(puzzles) <= 5
+
+def test_generate_puzzles_all_scrambled_unique():
+    # Each scrambled puzzle should be different from the answer
+    text = "Feature Puzzle"
+    puzzles = generate_puzzles(text)
+    for p in puzzles:
+        scrambled = p["puzzle"].split(': ')[-1]
+        assert scrambled != p["answer"]
+
+def test_extract_text_txt_with_newlines():
+    with tempfile.NamedTemporaryFile(mode="w+", suffix=".txt", delete=False) as f:
+        f.write("Hello\npytest!\nGoodbye.")
+        f.seek(0)
+        path = f.name
+    result = extract_text(path)
+    assert "pytest!" in result and "Goodbye." in result
+    os.remove(path)
+
+def test_generate_quiz_varied_sent_lengths():
+    text = "A short. Banana is yellow and elongated. Cat loves sleeping. Elephant is big and gray and from Africa."
+    quiz = generate_quiz(text, sentence_length=20, max_questions=3)
+    assert any("_____" in q["question"] for q in quiz)
+
+def test_generate_puzzles_punctuation_handling():
+    # Should exclude punctuation words from puzzles
+    text = "Programming! Python? Modular, encapsulation."
+    puzzles = generate_puzzles(text)
+    assert all(p["answer"].isalpha() for p in puzzles)
+
