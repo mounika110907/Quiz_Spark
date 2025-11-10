@@ -3,9 +3,7 @@ import os, random, spacy, PyPDF2
 from docx import Document
 
 app = Flask(__name__)
-
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "default_key_for_dev")
-# Needed for session storage
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "default_key_for_dev")  # Use env variable for security
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -52,6 +50,41 @@ def generate_puzzles(text):
         puzzles.append({"puzzle": f"Unscramble this word: {j}", "answer": w})
     return puzzles
 
+# ---------- REDUCED DUPLICATION ----------
+def grade_quiz(quiz, user_answers):
+    results = []
+    score = 0
+    for i, q in enumerate(quiz):
+        user = user_answers.get(f"q{i}")
+        correct = q["answer"]
+        is_correct = user == correct
+        if is_correct:
+            score += 1
+        results.append({
+            "question": q["question"],
+            "user": user,
+            "correct": correct,
+            "status": "✅" if is_correct else "❌"
+        })
+    return results, score
+
+def grade_puzzles(puzzles, user_answers):
+    results = []
+    correct_count = 0
+    for i, p in enumerate(puzzles):
+        user = user_answers.get(f"p{i}", "").strip().lower()
+        ans = p["answer"].lower()
+        is_correct = user == ans
+        if is_correct:
+            correct_count += 1
+        results.append({
+            "puzzle": p["puzzle"],
+            "user": user,
+            "answer": ans,
+            "is_correct": is_correct
+        })
+    return results, correct_count
+
 # ---------- ROUTES ----------
 @app.route("/")
 def index():
@@ -63,33 +96,17 @@ def upload():
     path = os.path.join(UPLOAD_FOLDER, file.filename)
     file.save(path)
     text = extract_text(path)
-
     quiz = generate_quiz(text)
     puzzles = generate_puzzles(text)
-
-    # store in Flask session
     session["quiz"] = quiz
     session["puzzles"] = puzzles
-
     return render_template("quiz.html", quiz=quiz)
 
 @app.route("/submit", methods=["POST"])
 def submit():
     quiz = session.get("quiz", [])
-    results = []
-    score = 0
-    for i, q in enumerate(quiz):
-        user = request.form.get(f"q{i}")
-        correct = q["answer"]
-        status = "✅" if user == correct else "❌"
-        if status == "✅":
-            score += 1
-        results.append({
-            "question": q["question"],
-            "user": user,
-            "correct": correct,
-            "status": status
-        })
+    user_answers = request.form
+    results, score = grade_quiz(quiz, user_answers)
     return render_template("quiz_result.html", results=results, score=score, total=len(quiz))
 
 @app.route("/puzzle")
@@ -100,26 +117,13 @@ def puzzle():
 @app.route("/check_puzzles", methods=["POST"])
 def check_puzzles():
     puzzles = session.get("puzzles", [])
-    results = []
-    correct_count = 0
-    for i, p in enumerate(puzzles):
-        user = request.form.get(f"p{i}", "").strip().lower()
-        ans = p["answer"].lower()
-        is_correct = user == ans
-        if is_correct:
-            correct_count += 1
-        results.append({
-            "puzzle": p["puzzle"],
-            "user": user,
-            "answer": ans,
-            "is_correct": is_correct
-        })
+    user_answers = request.form
+    results, correct_count = grade_puzzles(puzzles, user_answers)
     return render_template("puzzle_result.html", results=results, correct=correct_count, total=len(puzzles))
+
 @app.route("/thankyou")
 def thankyou():
     return render_template("thankyou.html")
 
-
 if __name__ == "__main__":
     app.run(debug=True)
-
