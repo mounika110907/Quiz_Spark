@@ -1,6 +1,8 @@
 import tempfile
 import os
 from text_utils import extract_text, generate_quiz, generate_puzzles
+import pytest
+
 
 def test_extract_text_txt():
     with tempfile.NamedTemporaryFile(mode="w+", suffix=".txt", delete=False) as f:
@@ -199,4 +201,30 @@ def test_generate_puzzles_punctuation_handling():
     text = "Programming! Python? Modular, encapsulation."
     puzzles = generate_puzzles(text)
     assert all(p["answer"].isalpha() for p in puzzles)
+
+def test_extract_text_pdf_exception(monkeypatch):
+    class DummyPdfReader:
+        def __init__(self, f):
+            raise Exception("PDF failed to open!")
+    monkeypatch.setattr("text_utils.PyPDF2.PdfReader", DummyPdfReader)
+    path = "anyfile.pdf"  # File path doesn't have to exist for monkeypatched open
+    result = extract_text(path)
+    assert result == ""  # Should hit exception and cover lines 16-17
+
+def test_extract_text_docx_exception(monkeypatch):
+    # Simulate a docx load error to cover line 28
+    def fail_docx(path):
+        raise Exception("DOCX failed to load!")
+    monkeypatch.setattr("text_utils.Document", fail_docx)
+    result = extract_text("fake.docx")
+    assert result == ""
+
+def test_extract_text_invalid_open(monkeypatch):
+    # Simulate open() failure and catch the exception (covers lines 9-14)
+    def fail_open(*args, **kwargs):
+        raise Exception("Open failed!")
+    monkeypatch.setattr("builtins.open", fail_open)
+    result = extract_text("file.txt")
+    assert result == ""
+
 
