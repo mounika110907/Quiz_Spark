@@ -24,9 +24,14 @@ jobs:
 
       - name: Install dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential g++ python3-dev
           python -m pip install --upgrade pip
           pip install pytest pytest-cov spacy PyPDF2 python-docx
           python -m spacy download en_core_web_sm
+    
+    
+
 
       - name: Run tests with coverage
         run: |
