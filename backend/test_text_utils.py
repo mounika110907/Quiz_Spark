@@ -284,3 +284,15 @@ def test_extract_text_large_file():
     assert result.count("Line") == 10000
     os.remove(path)
 
+def test_extract_text_permission_error(monkeypatch):
+    def fail_open(*args, **kwargs):
+        raise PermissionError("Permission denied")
+    monkeypatch.setattr("builtins.open", fail_open)
+    result = extract_text("protected_file.txt")
+    assert result == ""
+
+# Test generate_quiz with a text containing nouns but all filtered by high min_nouns parameter
+def test_generate_quiz_high_min_nouns_filter():
+    text = "Apple banana cat dog elephant giraffe fox."
+    quiz = generate_quiz(text, min_nouns=10)  # higher than actual noun count
+    assert quiz == []  # No quiz generated because noun count per sentence is less than min_nouns
